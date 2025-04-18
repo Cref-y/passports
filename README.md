@@ -1,6 +1,7 @@
+
 # Welcome to Crefy Passports
 
-## Project info
+## Project setup
 
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
@@ -24,4 +25,6 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+
+
 
