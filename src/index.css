@@ -1,0 +1,134 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 211 100% 35%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 211 100% 35%;
+
+    --radius: 0.5rem;
+
+    --passport-dark-blue: 211 100% 20%;
+    --passport-blue: 211 100% 35%;
+    --passport-light-blue: 211 100% 95%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* 3D Perspective */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+/* Passport pattern for card background */
+.passport-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230F3460' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Passport stamp effect */
+.stamp {
+  transform: rotate(12deg);
+  color: hsl(var(--passport-dark-blue));
+  font-size: 1rem;
+  font-weight: 700;
+  border: 0.25rem solid hsl(var(--passport-dark-blue));
+  display: inline-block;
+  padding: 0.25rem 1rem;
+  text-transform: uppercase;
+  border-radius: 1rem;
+  font-family: 'Courier', monospace;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+/* Holographic effect animation */
+.holographic-animation {
+  background-size: 200% 200%;
+  animation: holographic 6s ease infinite;
+  opacity: 0.3;
+}
+
+@keyframes holographic {
+  0% {
+    background-position: 0% 50%;
+    opacity: 0.2;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 0.4;
+  }
+  100% {
+    background-position: 0% 50%;
+    opacity: 0.2;
+  }
+}
