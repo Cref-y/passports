@@ -1,9 +1,9 @@
-
 import React from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import PassportCard from "@/components/PassportCard";
 import FeaturesList from "@/components/FeaturesList";
+import DirectPinataUpload from "@/components/DirectPinataUpload"; // Make sure to put the component in this path
 
 const Index = () => {
   return (
@@ -22,15 +22,18 @@ const Index = () => {
             <h1 className="text-4xl md:text-5xl font-bold text-passport-blue mb-4">
               Your Digital Identity Passport
             </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            KYC once. Authenticate anywhere.
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6">
+              KYC once. Authenticate anywhere.
             </p>
+            
+            {/* Now properly using the component */}
+           
           </motion.div>
           
           <div className="max-w-4xl mx-auto">
             <PassportCard />
           </div>
-          
+          <DirectPinataUpload />
           <FeaturesList />
           
           <div className="text-center mt-12">

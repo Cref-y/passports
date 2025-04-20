@@ -1,42 +1,21 @@
-import React, { useState, useRef } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
-import { CheckCircle, Shield, Globe, ExternalLink, Copy, Loader, Download, Camera, ImagePlus } from "lucide-react";
 import ConnectButton from "./connectButton";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { sepolia } from 'wagmi/chains';
-import subdomain from "../abi/subdomain.json";
-import html2canvas from 'html2canvas';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import passport from "../abi/passport.json"
 
-const { abi, address } = subdomain
-
-const PassportCard = () => {
-  const [name, setName] = useState("");
+const PassportNFT = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txHash, setTxHash] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
-  const [profilePicture, setProfilePicture] = useState("");
   const { toast } = useToast();
-  const cardRef = useRef(null);
-  const fileInputRef = useRef(null);
   
+  const { abi, address } = subdomain
   // Get the connected wallet address
   const { address: userAddress, isConnected } = useAccount();
 
   // Set up the contract write
-  const { writeContract, data: hash, isPending, isError, error } = useWriteContract();
+  const { writePassport, data: hash, isPending, isError, error } = useWriteContract();
 
   // Set up transaction monitoring
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
@@ -102,24 +81,25 @@ const PassportCard = () => {
     
     try {
       // Execute the contract write
-      writeContract({
-        address: address as `0x${string}`,
-        abi,
-        functionName: 'registerSubname',
-        args: [name],
+      writePassport({
+        address: passportContractAddress as `0x${string}`,
+        abi: abi,
+        functionName: 'safeMint',
+        args: [userAddress, tokenURI],
         chain: sepolia,
-        account: userAddress,
       });
-    } catch (error) {
-      console.error("Transaction setup error:", error);
-      setIsSubmitting(false);
-      toast({
-        title: "Transaction Failed",
-        description: "There was an error processing your request. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+      
+      return passportHash;
+    } catch (err) {
+        console.error('Error minting NFT passport:', err);
+        toast({
+          title: "Minting Failed",
+          description: "Failed to mint NFT passport. Trying to continue with domain registration.",
+          variant: "destructive",
+        });
+        return null;
+      }
+    };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -398,42 +378,7 @@ const PassportCard = () => {
                   <div className="stamp animate-stamp-appear">Verified</div>
                 </motion.div>
                 
-                <div className="space-y-2">
-                  <h3 className="font-bold text-xl text-passport-blue">
-                    Welcome, {name}!
-                  </h3>
-                  <p className="text-gray-600">
-                    Your digital passport is now active
-                  </p>
-                  
-                  {/* Passport ID Section */}
-                  <div className="bg-passport-lightBlue rounded-md p-3 font-mono text-center mt-4 border border-passport-blue/20">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm text-passport-blue/70">Passport ID:</span>
-                      <button 
-                        onClick={() => copyToClipboard(`${name}.crefy.eth`)}
-                        className="text-passport-blue hover:text-passport-darkBlue"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <p className="text-passport-blue font-bold">{name}.crefy.eth</p>
-                  </div>
-                  
-                  {/* Wallet Address Section */}
-                  <div className="bg-passport-lightBlue rounded-md p-3 font-mono text-center mt-2 border border-passport-blue/20">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm text-passport-blue/70">Mapped Address:</span>
-                      <button 
-                        onClick={() => copyToClipboard(walletAddress)}
-                        className="text-passport-blue hover:text-passport-darkBlue"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <p className="text-passport-blue text-sm truncate">{walletAddress}</p>
-                  </div>
-                </div>
+                
                 
                 <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                   <p className="text-sm text-green-800 flex items-center gap-2 justify-center">
@@ -498,22 +443,8 @@ const PassportCard = () => {
           )}
         </motion.div>
       </div>
-      
-      {/* Add a download button outside the card as well */}
-      {(isSubmitted || name) && (
-        <div className="mt-4 flex justify-center">
-          <Button
-            variant="outline"
-            onClick={downloadCardAsImage}
-            className="border-passport-blue text-passport-blue hover:bg-passport-lightBlue"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download Passport as Image
-          </Button>
-        </div>
-      )}
-    </motion.div>
+    
   );
 };
 
-export default PassportCard;
+export default PassportNft;
