@@ -23,7 +23,7 @@ const Index = () => {
               Your Digital Identity Passport
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6">
-              KYC once. Authenticate anywhere.
+              KYC once. Authenticate everywhere.
             </p>
             
             {/* Now properly using the component */}
@@ -33,7 +33,6 @@ const Index = () => {
           <div className="max-w-4xl mx-auto">
             <PassportCard />
           </div>
-          <DirectPinataUpload />
           <FeaturesList />
           
           <div className="text-center mt-12">

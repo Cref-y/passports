@@ -4,12 +4,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAccount, useConfig, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 
-const CONTRACT_ADDRESS = "0xb96aEA9db1ca0a03e4bb2F22b1E74EE65A6D851d";
+const CONTRACT_ADDRESS = "0x16f72991C9fd594f7Fe99aEC95a3684B94B598dd";
 
 const CONTRACT_ABI = [
   {
     inputs: [
-      { internalType: "address", name: "to", type: "address" },
       { internalType: "string", name: "uri", type: "string" },
     ],
     name: "safeMint",
@@ -18,6 +17,7 @@ const CONTRACT_ABI = [
     type: "function",
   },
 ];
+
 
 export const DirectPinataUpload: React.FC<{
   onSuccess?: (txHash: string) => void;
@@ -82,13 +82,12 @@ export const DirectPinataUpload: React.FC<{
   };
 
   const handleMintNFT = async () => {
-    if (!uploadedUrl || !address) return;
+    if (!uploadedUrl ) return;
 
     try {
       setIsMinting(true);
       toast.info("Submitting transaction...");
 
-      console.log("Minting with address:", address);
       console.log("Minting with URI:", uploadedUrl);
 
       // Use writeContract without awaiting
@@ -96,7 +95,7 @@ export const DirectPinataUpload: React.FC<{
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: CONTRACT_ABI,
         functionName: "safeMint",
-        args: [address, uploadedUrl]
+        args: [uploadedUrl]
       });
 
       // Transaction handling now happens in the useEffect

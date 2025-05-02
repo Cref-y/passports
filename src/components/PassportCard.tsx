@@ -3,12 +3,14 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { CheckCircle, Shield, Globe, ExternalLink, Copy, Loader, Download, Camera, ImagePlus } from "lucide-react";
+import { CheckCircle, Shield, Globe, ExternalLink, Copy, Loader, Download, Camera, ImagePlus, Upload } from "lucide-react";
 import ConnectButton from "./connectButton";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { sepolia } from 'wagmi/chains';
 import subdomain from "../abi/subdomain.json";
 import html2canvas from 'html2canvas';
+import { uploadFileDirectlyToIPFS } from "@/utils/directPinataUpload";
+import { toast as sonnerToast } from "sonner";
 import {
   Card,
   CardContent,
@@ -21,38 +23,84 @@ import { Label } from "@/components/ui/label";
 
 const { abi, address } = subdomain
 
+const CONTRACT_ADDRESS = "0xb96aEA9db1ca0a03e4bb2F22b1E74EE65A6D851d";
+
+const CONTRACT_ABI = [
+  {
+    inputs: [
+      { internalType: "address", name: "to", type: "address" },
+      { internalType: "string", name: "uri", type: "string" },
+    ],
+    name: "safeMint",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+];
+
 const PassportCard = () => {
   const [name, setName] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNftSubmitting, setIsNftSubmitting] = useState(false);
+  const [isSubdomainSubmitting, setIsSubdomainSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [txHash, setTxHash] = useState("");
+  const [nftMinted, setNftMinted] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
   const [profilePicture, setProfilePicture] = useState("");
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const { toast } = useToast();
   const cardRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Get the connected wallet address
   const { address: userAddress, isConnected } = useAccount();
 
-  // Set up the contract write
+  // Set up the contract write for subdomain
   const { writeContract, data: hash, isPending, isError, error } = useWriteContract();
+
+  // Set up contract write for NFT mint
+  const { 
+    writeContract: writeNFTContract, 
+    data: nftHash, 
+    isPending: isNftPending 
+  } = useWriteContract();
 
   // Set up transaction monitoring
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   });
 
-  // Watch for transaction success
+  // Set up NFT transaction monitoring
+  const { isLoading: isNftConfirming, isSuccess: isNftConfirmed } = useWaitForTransactionReceipt({
+    hash: nftHash,
+  });
+
+  // Watch for NFT transaction success
+  React.useEffect(() => {
+    if (isNftConfirmed && nftHash) {
+      setIsNftSubmitting(false);
+      setNftMinted(true);
+      setTxHash(nftHash);
+      
+      toast({
+        title: "NFT Minted!",
+        description: "Your passport NFT has been minted successfully! You can now register your subdomain.",
+      });
+    }
+  }, [isNftConfirmed, nftHash, toast]);
+
+  // Watch for subdomain registration success
   React.useEffect(() => {
     if (isConfirmed && hash) {
       setWalletAddress(userAddress || "");
-      setIsSubmitting(false);
+      setIsSubdomainSubmitting(false);
       setIsSubmitted(true);
+      setTxHash(hash);
       
       toast({
         title: "Success!",
-        description: `Your ${name}.crefy.eth passport is now ready!`,
+        description: `Your ${name}.crefy.eth passport subdomain is registered!`,
       });
     }
   }, [isConfirmed, hash, name, toast, userAddress]);
@@ -61,7 +109,7 @@ const PassportCard = () => {
   React.useEffect(() => {
     if (isError && error) {
       console.error("Transaction error:", error);
-      setIsSubmitting(false);
+      setIsSubdomainSubmitting(false);
       toast({
         title: "Transaction Failed",
         description: "There was an error processing your request. Please try again.",
@@ -70,54 +118,127 @@ const PassportCard = () => {
     }
   }, [isError, error, toast]);
 
-  // Update txHash when hash changes
-  React.useEffect(() => {
-    if (hash) {
-      setTxHash(hash);
+  const mintNFTPassport = async () => {
+    if (!uploadedUrl || !userAddress) {
+      toast({
+        title: "Error",
+        description: "Missing IPFS URL or wallet connection",
+        variant: "destructive",
+      });
+      return;
     }
-  }, [hash]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (name.trim() === "") {
-      toast({
-        title: "Error",
-        description: "Please enter a name for your passport",
-        variant: "destructive",
-      });
-      return;
-    }
-  
-    if (!isConnected || !userAddress) {
-      toast({
-        title: "Error",
-        description: "Please connect your wallet first",
-        variant: "destructive",
-      });
-      return;
-    }
-  
-    setIsSubmitting(true);
-    
     try {
-      // Execute the contract write
+      setIsNftSubmitting(true);
+      console.log("Minting NFT with address:", userAddress);
+      console.log("Minting with URI:", uploadedUrl);
+      
+      // Use writeContract for NFT minting
+      writeNFTContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: CONTRACT_ABI,
+        functionName: "safeMint",
+        args: [userAddress, uploadedUrl],
+        chain: sepolia,
+        account: userAddress as `0x${string}`
+      });
+    } catch (error) {
+      console.error("NFT Mint failed:", error);
+      setIsNftSubmitting(false);
+      toast({
+        title: "NFT Minting Failed",
+        description: "There was an error minting your passport NFT.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const registerSubdomain = async () => {
+    if (!name || !userAddress) {
+      toast({
+        title: "Error",
+        description: "Missing name or wallet connection",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSubdomainSubmitting(true);
+      
+      // Execute the contract write for subdomain
       writeContract({
         address: address as `0x${string}`,
         abi,
         functionName: 'registerSubname',
         args: [name],
         chain: sepolia,
-        account: userAddress,
+        account: userAddress as `0x${string}`,
       });
     } catch (error) {
-      console.error("Transaction setup error:", error);
-      setIsSubmitting(false);
+      console.error("Subdomain registration failed:", error);
+      setIsSubdomainSubmitting(false);
       toast({
-        title: "Transaction Failed",
-        description: "There was an error processing your request. Please try again.",
+        title: "Subdomain Registration Failed",
+        description: "There was an error registering your subdomain.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleUploadToIPFS = async () => {
+    if (!cardRef.current) {
+      toast({
+        title: "Error",
+        description: "Unable to capture passport card",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!profilePicture) {
+      toast({
+        title: "Missing Profile Photo",
+        description: "Please add a profile photo before uploading",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      toast({
+        title: "Capturing passport",
+        description: "Please wait while we prepare your passport image...",
+      });
+
+      // Capture the card as an image
+      const canvas = await html2canvas(cardRef.current, {
+        backgroundColor: null,
+        scale: 2, // Higher scale for better quality
+        logging: false,
+        useCORS: true,
+      });
+      
+      // Convert canvas to Blob
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => {
+          resolve(blob!);
+        }, 'image/png', 0.95);
+      });
+      
+      // Create a File object from the Blob
+      const file = new File([blob], `${name || "crefy"}-passport.png`, { type: 'image/png' });
+      
+      // Upload the file to IPFS
+      const url = await uploadFileDirectlyToIPFS(file);
+      setUploadedUrl(url);
+      sonnerToast.success("Passport card uploaded to IPFS!");
+    } catch (error) {
+      console.error("Error uploading passport card:", error);
+      sonnerToast.error("Failed to upload passport card");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -195,8 +316,10 @@ const PassportCard = () => {
     }
   };
 
-  // Determine if button should be disabled
-  const isButtonDisabled = isSubmitting || isPending || isConfirming;
+  // Determine if buttons should be disabled
+  const isUploadDisabled = isUploading || !name || !profilePicture;
+  const isNftButtonDisabled = isNftSubmitting || isNftPending || isNftConfirming || !uploadedUrl;
+  const isSubdomainButtonDisabled = isSubdomainSubmitting || isPending || isConfirming || !nftMinted;
 
   return (
     <motion.div
@@ -229,8 +352,8 @@ const PassportCard = () => {
               <CardHeader className="border-b border-passport-blue/20 bg-gradient-to-r from-passport-blue to-passport-darkBlue text-white">
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-2xl tracking-wider">PASSPORT</CardTitle>
-                    <CardDescription className="text-white/80">CREFY DIGITAL IDENTITY</CardDescription>
+                    <CardTitle className="text-2xl tracking-wider">PASS.ID</CardTitle>
+                    <CardDescription className="text-white/80">24599BB7CAD5C1C5</CardDescription>
                   </div>
                   
                   {/* Profile Picture Upload UI */}
@@ -274,7 +397,7 @@ const PassportCard = () => {
                   <p className="text-gray-600">Your KYC has been approved</p>
                 </div>
                 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form className="space-y-4">
                   <div className="flex flex-col space-y-1.5">
                     <Label htmlFor="name" className="text-passport-blue">
                       Choose your Crefy passport name
@@ -286,7 +409,7 @@ const PassportCard = () => {
                         onChange={(e) => setName(e.target.value)}
                         placeholder="yourname"
                         className="flex-1"
-                        disabled={isButtonDisabled}
+                        disabled={nftMinted || isSubdomainSubmitting}
                       />
                       <span className="flex items-center text-gray-500 text-sm">.crefy.eth</span>
                     </div>
@@ -308,43 +431,96 @@ const PassportCard = () => {
                     </p>
                   </div>
                   
-                  <div className="px-4 py-3 bg-passport-lightBlue/70 rounded-lg border border-passport-blue/20">
-                    <p className="text-sm text-passport-darkBlue flex items-center gap-1">
-                      <Shield className="h-4 w-4" />
-                      <span>You will receive:</span>
-                    </p>
-                    <ul className="ml-6 mt-2 text-sm list-disc text-passport-blue space-y-1">
-                      <li>NFT Passport (Verifiable Credential)</li>
-                      <li>Personal {name || "yourname"}.crefy.eth subdomain</li>
-                      <li>Access to Crefy verified services</li>
-                      <li>Access to Crefy partner networks</li>
-                    </ul>
+                  {/* Upload to IPFS section */}
+                  <div className="flex flex-col space-y-2">
+                    <div className="p-2 bg-passport-lightBlue/30 rounded-md mb-1">
+                      <p className="text-xs text-passport-blue text-center">
+                        1️⃣ Enter your details to get your passport
+                        <br />
+                      </p>
+                    </div>
+                    
+                    <Button
+                      type="button"
+                      onClick={uploadedUrl ? 
+                        () => window.open(uploadedUrl.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/'), '_blank') : 
+                        handleUploadToIPFS
+                      }
+                      disabled={(isUploadDisabled || isUploading) && !uploadedUrl}
+                      className={`w-full ${uploadedUrl ? 'bg-green-600 hover:bg-green-700' : '#4D3674hover:bg-passport-darkBlue'} text-white`}
+                    >
+                      {isUploading ? (
+                        <>
+                          <Loader className="mr-2 h-4 w-4 animate-spin" />
+                          Uploading to IPFS...
+                        </>
+                      ) : uploadedUrl ? (
+                        <>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          View on IPFS Gateway <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Upload Passport to IPFS
+                        </>
+                      )}
+                    </Button>
                   </div>
+                  
+                  {/* NFT Minting button */}
+                  <Button
+                    type="button"
+                    onClick={nftMinted ? 
+                      () => window.open(`https://sepolia.etherscan.io/tx/${nftHash}`, '_blank') : 
+                      mintNFTPassport
+                    }
+                    disabled={isNftButtonDisabled && !nftMinted}
+                    className={`w-full ${nftMinted ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white`}
+                  >
+                    {isNftSubmitting || isNftConfirming ? (
+                      <>
+                        <Loader className="mr-2 h-4 w-4 animate-spin" />
+                        Minting NFT...
+                      </>
+                    ) : nftMinted ? (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Passport Minted: Click to check the tx <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                      </>
+                    ) : (
+                      "Mint NFT Passport"
+                    )}
+                  </Button>
+                  
+                  {/* Subdomain registration button */}
+                  <Button
+                    type="button"
+                    onClick={registerSubdomain}
+                    disabled={isSubdomainButtonDisabled}
+                    className="w-full #4D3674text-white hover:bg-passport-darkBlue"
+                  >
+                    {isSubdomainSubmitting || isConfirming ? (
+                      <>
+                        <Loader className="mr-2 h-4 w-4 animate-spin" />
+                        Registering Subdomain...
+                      </>
+                    ) : (
+                      "Register Subdomain"
+                    )}
+                  </Button>
                 </form>
               </CardContent>
               
               <CardFooter className="flex justify-between border-t border-passport-blue/20 bg-passport-lightBlue/30">
                 <div className="h-8 w-12 bg-gradient-to-r from-passport-darkBlue/50 to-passport-blue/50 rounded-md border border-white/30"></div>
-                {isConnected ? (
-                  <Button 
-                    type="button" 
-                    onClick={handleSubmit}
-                    disabled={isButtonDisabled}
-                  >
-                    {isButtonDisabled ? (
-                      <>
-                        <Loader className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      "Get Your Passport"
-                    )}
-                  </Button>
-                ) : (
+                {!isConnected ? (
                   <div className="flex items-center space-x-2">
                     <p className="text-sm text-passport-blue">Connect wallet first:</p>
                     <ConnectButton />
                   </div>
+                ) : (
+                  <p className="text-sm text-passport-blue">Follow the steps above to complete your passport</p>
                 )}
               </CardFooter>
             </Card>
@@ -487,7 +663,7 @@ const PassportCard = () => {
                   <Button
                     variant="secondary"
                     onClick={downloadCardAsImage}
-                    className="bg-passport-blue text-white hover:bg-passport-darkBlue"
+                    className="#4D3674text-white hover:bg-passport-darkBlue"
                   >
                     <Download className="mr-1 h-4 w-4" />
                     Download
